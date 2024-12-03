@@ -1,7 +1,8 @@
 # Student ID: 010826054
-from datetime import timedelta, datetime
 
 from models.hash_table import HashTable
+from models.truck import Truck
+from user_interface.viewer import view_delivery_status
 import csv
 
 # Main program for delivering packages according to specified requirements
@@ -26,44 +27,7 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
         package_table.insert(package_id, address, deadline, city, zip_code, weight, status)
 
 
-# Truck Class
-class Truck:
-    def __init__(self, truck_id):
-        self.truck_id = truck_id
-        self.packages = []  # List of package IDs assigned to this truck
-        self.current_location = "4001 South 700 East"  # Starting point: WGUPS Hub
-        self.speed = 18  # Speed in miles per hour
-        self.miles_driven = 0
-        self.start_time = datetime.strptime("08:00 AM", "%I:%M %p")
-        self.current_time = self.start_time
 
-    def load_package(self, package_id):
-        if len(self.packages) < 16:
-            self.packages.append(package_id)
-        else:
-            print(f"Truck {self.truck_id} is full. Cannot load package {package_id}.")
-
-    def deliver_packages(self):
-        for package_id in self.packages:
-            # Simulate driving to the package location and delivering
-            # For simplicity, we'll assume each delivery takes 15 minutes
-            delivery_time = self.current_time.strftime("%I:%M %p")
-            deliver_package(package_id, delivery_time)
-            self.current_time += timedelta(minutes=15)
-
-# Function to simulate delivering packages
-def deliver_package(package_id, delivery_time):
-    """
-    Updates the delivery status of a package.
-    :param package_id: Unique identifier of the package
-    :param delivery_time: Time of delivery
-    """
-    package = package_table.lookup(package_id)
-    if package:
-        package['status'] = f"Delivered at {delivery_time}"
-        print(f"Package {package_id} delivered at {delivery_time}.")
-    else:
-        print(f"Package {package_id} not found.")
 
 # Create instances of the trucks
 truck_1 = Truck(truck_id=1)
@@ -80,9 +44,51 @@ for package_id in range(1, 41):  # Assuming 40 packages, with IDs ranging from 1
         truck_3.load_package(package_id)
 
 # Deliver packages using each truck
-truck_1.deliver_packages()
-truck_2.deliver_packages()
-truck_3.deliver_packages()
+truck_1.deliver_packages(package_table)
+print(f"Final Truck 1 mileage: {truck_1.miles_driven} miles")
+truck_2.deliver_packages(package_table)
+print(f"Final Truck 2 mileage: {truck_2.miles_driven} miles")
+truck_3.deliver_packages(package_table)
+print(f"Final Truck 3 mileage: {truck_3.miles_driven} miles")
+
 
 # Display the hash table to check updates
 print(package_table)
+
+# Function to view the delivery status of any package and the total mileage of all trucks
+def view_delivery_status():
+    while True:
+        print("\n--- Package Delivery Status Viewer ---")
+        print("1. View package status by ID")
+        print("2. View total mileage of all trucks")
+        print("3. Exit")
+        choice = input("Enter your choice: ")
+
+        if choice == '1':
+            try:
+                package_id = int(input("Enter the package ID: "))
+                package = package_table.lookup(package_id)
+                if package:
+                    print(f"\nPackage ID: {package['package_id']}")
+                    print(f"Address: {package['address']}, {package['city']}, {package['zip_code']}")
+                    print(f"Deadline: {package['deadline']}")
+                    print(f"Weight: {package['weight']} kg")
+                    print(f"Status: {package['status']}\n")
+                else:
+                    print("\nPackage not found.\n")
+            except ValueError:
+                print("\nInvalid package ID. Please enter a numeric value.\n")
+
+        elif choice == '2':
+            total_mileage = truck_1.miles_driven + truck_2.miles_driven + truck_3.miles_driven
+            print(f"\nTotal mileage of all trucks: {total_mileage:.2f} miles\n")
+
+        elif choice == '3':
+            print("Exiting viewer.")
+            break
+
+        else:
+            print("\nInvalid choice. Please enter 1, 2, or 3.\n")
+
+# Call the view_delivery_status function to allow the user to interact with the system
+view_delivery_status()
