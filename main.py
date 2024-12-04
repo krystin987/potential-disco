@@ -123,6 +123,29 @@ print(f"Final Truck 2 mileage: {truck_2.get_mileage():.2f} miles")
 truck_1.clear_packages()
 truck_2.clear_packages()
 
+# ***Step 1: Define a function to update the package address at 10:20 AM***
+def update_package_address(table, pkg_id, new_address):
+    update_package = table.lookup(pkg_id)
+    if update_package:
+        update_package['address'] = new_address['address']
+        update_package['city'] = new_address['city']
+        update_package['zip_code'] = new_address['zip_code']
+        print(f"Package {pkg_id} address updated to: {new_address['address']}, {new_address['city']}, {new_address['zip_code']}.")
+
+# ***Step 2: Update package #9 address at 10:20 AM***
+corrected_address = {
+    'address': '410 S State St',
+    'city': 'Salt Lake City',
+    'zip_code': '84111'
+}
+
+print("\n--- Address Correction at 10:20 AM ---")
+update_package_address(package_table, 9, corrected_address)
+
+# Clear Truck 1 and Truck 2 for the next phase
+truck_1.clear_packages()
+truck_2.clear_packages()
+
 # --- Phase 3: Take snapshot between 12:03 PM and 1:12 PM ---
 print("\n--- Status Snapshot: Between 12:03 PM and 1:12 PM ---")
 print("Truck 1 Loaded Packages (after unloading):")
@@ -142,6 +165,11 @@ for package_id in truck_3.packages:
 truck_3.deliver_packages(package_table, location_indices, get_distance)
 print("--------------------------------------------------")
 print(f"Final Truck 3 mileage: {truck_3.get_mileage():.2f} miles")
+
+# Print the total mileage for all trucks
+total_mileage = truck_1.get_mileage() + truck_2.get_mileage() + truck_3.get_mileage()
+print("\n--------------------------------------------------")
+print(f"End of Day Total Mileage for All Trucks: {total_mileage:.2f} miles")
 
 # Display the hash table to check updates
 print("\n--------------------------------------------------")
