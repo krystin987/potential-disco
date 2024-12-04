@@ -28,25 +28,25 @@ class Truck:
             package_address = package['address']
             if package_address in location_indices:
                 package_location_index = location_indices[package_address]
-                distance_to_location = get_distance(self.current_location_index, package_location_index)
-                travel_time = timedelta(hours=distance_to_location / self.speed)
+                distance = get_distance(self.current_location_index, package_location_index)
+
+                if distance == float('inf'):
+                    print(f"Skipping delivery for package {package_id} due to invalid location indices.")
+                    continue
+
+                travel_time = timedelta(hours=distance / self.speed)
                 self.current_time += travel_time
-                self.miles_driven += distance_to_location
+                self.miles_driven += distance
                 self.current_location_index = package_location_index
 
                 delivery_time = self.current_time.strftime("%I:%M %p")
                 self.update_package_status(package_table, package_id, delivery_time)
-                print(f"Truck {self.truck_id}: Delivered package {package_id}, total miles driven: {self.miles_driven:.2f}")
+                print(
+                    f"Truck {self.truck_id}: Delivered package {package_id}, total miles driven: {self.miles_driven:.2f}")
             else:
                 print(f"Address for package {package_id} not found in location index mapping.")
 
     def update_package_status(self, package_table, package_id, delivery_time):
-        """
-        Updates the delivery status of a package.
-        :param package_table: HashTable containing all packages
-        :param package_id: Unique identifier of the package
-        :param delivery_time: Time of delivery
-        """
         package = package_table.lookup(package_id)
         if package:
             package['status'] = f"Delivered at {delivery_time}"
@@ -55,10 +55,6 @@ class Truck:
             print(f"Package {package_id} not found.")
 
     def clear_packages(self):
-        """
-        Clears the packages from the truck after delivery.
-        This method is necessary to ensure that the truck can load new packages for different time slots.
-        """
         self.packages = []
         print(f"Truck {self.truck_id}: Cleared all packages after delivery.")
 

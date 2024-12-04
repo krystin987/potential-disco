@@ -1,9 +1,7 @@
 # Student ID: 010826054
-from datetime import datetime, timedelta
 
 from models.hash_table import HashTable
 from models.truck import Truck
-from services.clustering import assign_packages_to_clusters
 from user_interface.viewer import view_delivery_status
 import csv
 
@@ -23,8 +21,9 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
         city = row['City']
         zip_code = row['Zip']
         weight = float(row['Weight KILO'])
+        special_note = row['Special Notes']
         status = "At the hub"  # Initially all packages are at the hub
-        special_note = row.get('page 1 of 1 Page Special Notes', "").strip()
+
         # Insert package data into the hash table
         package_table.insert(package_id, address, deadline, city, zip_code, weight, status, special_note)
 
@@ -32,20 +31,13 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
 # Assuming 'wgups_distance_table.csv' has a matrix of distances between locations
 # Replace with the actual path to the distance data
 distance_data = []
-
 with open('data/wguups_distance_table.csv', mode='r') as file:
     reader = csv.reader(file)
-    headers_skipped = False
+    next(reader)  # Skip the header row
     for row in reader:
-        # Skip the first row containing headers
-        if not headers_skipped:
-            headers_skipped = True
-            continue
-
-        # Skip the first column and convert the remaining values to float
+        # Skip the first column in each row, which is the location name
         try:
-            distance_row = [float(x) if x.strip() else 0.0 for x in
-                            row[1:]]  # Skip the first column with location names
+            distance_row = [float(x) if x.strip() else 0.0 for x in row[1:]]
             distance_data.append(distance_row)
         except ValueError as e:
             print(f"Error parsing row: {row}, error: {e}")
@@ -85,40 +77,73 @@ location_indices = {
     "6351 South 900 East": 26
 }
 
-# Assign packages to trucks based on clustering logic
-truck_1_packages, truck_2_packages, truck_3_packages = assign_packages_to_clusters(package_table, location_indices)
-
 # Create instances of the trucks
 truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# Phase 1: Load and Deliver Packages for Truck 1 and Truck 2
-print("Phase 1: Loading Truck 1 and Truck 2")
-truck_1.load_packages(range(1, 17))  # Load packages 1 to 16
-truck_2.load_packages(range(17, 33))  # Load packages 17 to 32
+# --- Phase 1: Load and take snapshot between 8:35 AM and 9:25 AM ---
 
-# Deliver packages using Truck 1 and Truck 2
-print("Starting Phase 1 Delivery")
+print("\nPhase 1: Loading Truck 1 and Truck 2")
+truck_1.load_packages([1, 2, 3, 4, 5, 6, 7, 8])
+truck_2.load_packages([9, 10, 11, 12, 13, 14, 15, 16])
+
+# Take snapshot after loading
+print("\n--- Status Snapshot: Between 8:35 AM and 9:25 AM ---")
+print("Truck 1 Loaded Packages:")
+for package_id in truck_1.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+print("\nTruck 2 Loaded Packages:")
+for package_id in truck_2.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+
+# --- Phase 2: Load Truck 3 and take snapshot between 9:35 AM and 10:25 AM ---
+
+print("\nPhase 2: Loading Truck 3 at 9:35 AM")
+truck_3.load_packages([17, 18, 19, 20, 21, 22, 23, 24])
+
+# Take snapshot after loading
+print("\n--- Status Snapshot: Between 9:35 AM and 10:25 AM ---")
+print("Truck 3 Loaded Packages:")
+for package_id in truck_3.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+
+# --- Deliver packages for Truck 1 and Truck 2 ---
 truck_1.deliver_packages(package_table, location_indices, get_distance)
-print(f"Truck 1 mileage after first delivery: {truck_1.get_mileage():.2f} miles")
+print("--------------------------------------------------")
+print(f"Final Truck 1 mileage: {truck_1.get_mileage():.2f} miles")
 truck_2.deliver_packages(package_table, location_indices, get_distance)
-print(f"Truck 2 mileage after first delivery: {truck_2.get_mileage():.2f} miles")
+print("--------------------------------------------------")
+print(f"Final Truck 2 mileage: {truck_2.get_mileage():.2f} miles")
 
-# Phase 2: Loading Truck 3 at 9:35 AM
-print("Phase 2: Loading Truck 3 at 9:35 AM")
-truck_3.load_packages(range(33, 41))  # Load packages 33 to 40
+# Clear Truck 1 and Truck 2 for the next phase
+truck_1.clear_packages()
+truck_2.clear_packages()
 
-# Phase 3: Deliver Packages using Truck 3 (After Truck 1 Returns to Hub)
-print("\nStarting Phase 3: Truck 3 Takes Over, Truck 1 Returns to Hub")
-truck_1.clear_packages()  # Unload Truck 1 packages after completion
+# --- Phase 3: Take snapshot between 12:03 PM and 1:12 PM ---
+print("\n--- Status Snapshot: Between 12:03 PM and 1:12 PM ---")
+print("Truck 1 Loaded Packages (after unloading):")
+for package_id in truck_1.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+print("\nTruck 2 Loaded Packages (after unloading):")
+for package_id in truck_2.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+print("\nTruck 3 Loaded Packages:")
+for package_id in truck_3.packages:
+    package = package_table.lookup(package_id)
+    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
+
+# --- Deliver packages for Truck 3 ---
 truck_3.deliver_packages(package_table, location_indices, get_distance)
-print(f"Truck 3 mileage after delivery: {truck_3.get_mileage():.2f} miles")
+print("--------------------------------------------------")
+print(f"Final Truck 3 mileage: {truck_3.get_mileage():.2f} miles")
 
-# Phase 4: Optionally Reload Truck 1 or Truck 2 (if more deliveries exist)
-print("\nPhase 4: Reloading Truck 1 or Truck 2 for Remaining Deliveries")
-# Optionally reload Truck 1 or Truck 2 for additional deliveries
-
+# Display the hash table to check updates
 print("\n--------------------------------------------------")
 print("Final Package Status:")
 print(package_table)
