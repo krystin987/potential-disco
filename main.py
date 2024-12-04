@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from models.hash_table import HashTable
 from models.truck import Truck
+from services.clustering import assign_packages_to_clusters
 from user_interface.viewer import view_delivery_status
 import csv
 
@@ -84,85 +85,40 @@ location_indices = {
     "6351 South 900 East": 26
 }
 
+# Assign packages to trucks based on clustering logic
+truck_1_packages, truck_2_packages, truck_3_packages = assign_packages_to_clusters(package_table, location_indices)
+
 # Create instances of the trucks
 truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# Load packages onto trucks (first time slot)
-time_slot_start = datetime.strptime("08:35 AM", "%I:%M %p")
-truck_1_packages = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-truck_2_packages = [17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
-truck_3_packages = [33, 34, 35, 36, 37, 38, 39, 40]
+# Phase 1: Load and Deliver Packages for Truck 1 and Truck 2
+print("Phase 1: Loading Truck 1 and Truck 2")
+truck_1.load_packages(range(1, 17))  # Load packages 1 to 16
+truck_2.load_packages(range(17, 33))  # Load packages 17 to 32
 
-truck_1.load_packages_time_slot(truck_1_packages, time_slot_start)
-truck_2.load_packages_time_slot(truck_2_packages, time_slot_start)
-truck_3.load_packages_time_slot(truck_3_packages, time_slot_start)
-
-# Deliver packages using each truck after the first loading
+# Deliver packages using Truck 1 and Truck 2
+print("Starting Phase 1 Delivery")
 truck_1.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
 print(f"Truck 1 mileage after first delivery: {truck_1.get_mileage():.2f} miles")
 truck_2.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
 print(f"Truck 2 mileage after first delivery: {truck_2.get_mileage():.2f} miles")
+
+# Phase 2: Loading Truck 3 at 9:35 AM
+print("Phase 2: Loading Truck 3 at 9:35 AM")
+truck_3.load_packages(range(33, 41))  # Load packages 33 to 40
+
+# Phase 3: Deliver Packages using Truck 3 (After Truck 1 Returns to Hub)
+print("\nStarting Phase 3: Truck 3 Takes Over, Truck 1 Returns to Hub")
+truck_1.clear_packages()  # Unload Truck 1 packages after completion
 truck_3.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 3 mileage after first delivery: {truck_3.get_mileage():.2f} miles")
+print(f"Truck 3 mileage after delivery: {truck_3.get_mileage():.2f} miles")
 
-# Clear packages from trucks after delivery
-truck_1.clear_packages()
-truck_2.clear_packages()
-truck_3.clear_packages()
+# Phase 4: Optionally Reload Truck 1 or Truck 2 (if more deliveries exist)
+print("\nPhase 4: Reloading Truck 1 or Truck 2 for Remaining Deliveries")
+# Optionally reload Truck 1 or Truck 2 for additional deliveries
 
-# Load packages onto trucks (second time slot between 9:35 AM and 10:25 AM)
-time_slot_start = datetime.strptime("09:35 AM", "%I:%M %p")
-truck_1_packages = [6, 14, 29]  # Delayed packages and high priority ones
-truck_2_packages = [18, 25, 36, 38]  # Packages restricted to truck 2
-truck_3_packages = [32]  # Additional packages that can be loaded
-
-truck_1.load_packages_time_slot(truck_1_packages, time_slot_start)
-truck_2.load_packages_time_slot(truck_2_packages, time_slot_start)
-truck_3.load_packages_time_slot(truck_3_packages, time_slot_start)
-
-# Deliver packages using each truck after the second loading
-truck_1.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 1 mileage after second delivery: {truck_1.get_mileage():.2f} miles")
-truck_2.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 2 mileage after second delivery: {truck_2.get_mileage():.2f} miles")
-truck_3.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 3 mileage after second delivery: {truck_3.get_mileage():.2f} miles")
-
-# Clear packages from trucks after delivery
-truck_1.clear_packages()
-truck_2.clear_packages()
-truck_3.clear_packages()
-
-# Load packages onto trucks (third time slot between 12:03 PM and 1:12 PM)
-time_slot_start = datetime.strptime("12:03 PM", "%I:%M %p")
-truck_1_packages = [15, 16, 20]  # Packages that need to be delivered in the afternoon
-truck_2_packages = [3, 18, 36]  # Packages restricted to truck 2 or delayed ones
-truck_3_packages = [25, 37, 39]  # Additional packages that can be loaded
-
-truck_1.load_packages_time_slot(truck_1_packages, time_slot_start)
-truck_2.load_packages_time_slot(truck_2_packages, time_slot_start)
-truck_3.load_packages_time_slot(truck_3_packages, time_slot_start)
-
-# Deliver packages using each truck after the third loading
-truck_1.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 1 mileage after third delivery: {truck_1.get_mileage():.2f} miles")
-truck_2.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 2 mileage after third delivery: {truck_2.get_mileage():.2f} miles")
-truck_3.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Truck 3 mileage after third delivery: {truck_3.get_mileage():.2f} miles")
-
-# Display the hash table to check updates
 print("\n--------------------------------------------------")
 print("Final Package Status:")
 print(package_table)
