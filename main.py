@@ -6,7 +6,6 @@ from user_interface.viewer import view_delivery_status
 import csv
 
 # Main program for delivering packages according to specified requirements
-
 # Create an instance of the HashTable to store package data
 package_table = HashTable(size=40)  # Assuming 40 packages as an average per day
 
@@ -27,8 +26,7 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
         # Insert package data into the hash table
         package_table.insert(package_id, address, deadline, city, zip_code, weight, status, special_note)
 
-# Load distance data from WGUPS Distance Table
-# Assuming 'wgups_distance_table.csv' has a matrix of distances between locations
+# Load distance data from Distance Table
 # Replace with the actual path to the distance data
 distance_data = []
 with open('data/wguups_distance_table.csv', mode='r') as file:
@@ -82,34 +80,16 @@ truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# --- Phase 1: Load and take snapshot between 8:35 AM and 9:25 AM ---
+# --- Phase 1: ---
 
 print("\nPhase 1: Loading Truck 1 and Truck 2")
 truck_1.load_packages([1, 2, 3, 4, 5, 6, 7, 8])
 truck_2.load_packages([9, 10, 11, 12, 13, 14, 15, 16])
 
-# Take snapshot after loading
-print("\n--- Status Snapshot: Between 8:35 AM and 9:25 AM ---")
-print("Truck 1 Loaded Packages:")
-for package_id in truck_1.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
-print("\nTruck 2 Loaded Packages:")
-for package_id in truck_2.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
-
-# --- Phase 2: Load Truck 3 and take snapshot between 9:35 AM and 10:25 AM ---
+# --- Phase 2: ---
 
 print("\nPhase 2: Loading Truck 3 at 9:35 AM")
 truck_3.load_packages([17, 18, 19, 20, 21, 22, 23, 24])
-
-# Take snapshot after loading
-print("\n--- Status Snapshot: Between 9:35 AM and 10:25 AM ---")
-print("Truck 3 Loaded Packages:")
-for package_id in truck_3.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
 
 # --- Deliver packages for Truck 1 and Truck 2 ---
 truck_1.deliver_packages(package_table, location_indices, get_distance)
@@ -123,7 +103,7 @@ print(f"Final Truck 2 mileage: {truck_2.get_mileage():.2f} miles")
 truck_1.clear_packages()
 truck_2.clear_packages()
 
-# ***Step 1: Define a function to update the package address at 10:20 AM***
+# define a function to update the package address at 10:20 AM
 def update_package_address(table, pkg_id, new_address):
     update_package = table.lookup(pkg_id)
     if update_package:
@@ -132,7 +112,7 @@ def update_package_address(table, pkg_id, new_address):
         update_package['zip_code'] = new_address['zip_code']
         print(f"Package {pkg_id} address updated to: {new_address['address']}, {new_address['city']}, {new_address['zip_code']}.")
 
-# ***Step 2: Update package #9 address at 10:20 AM***
+#  Update package #9 address at 10:20 AM
 corrected_address = {
     'address': '410 S State St',
     'city': 'Salt Lake City',
@@ -145,22 +125,7 @@ update_package_address(package_table, 9, corrected_address)
 # Clear Truck 1 and Truck 2 for the next phase
 truck_1.clear_packages()
 truck_2.clear_packages()
-
-# --- Phase 3: Take snapshot between 12:03 PM and 1:12 PM ---
-print("\n--- Status Snapshot: Between 12:03 PM and 1:12 PM ---")
-print("Truck 1 Loaded Packages (after unloading):")
-for package_id in truck_1.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
-print("\nTruck 2 Loaded Packages (after unloading):")
-for package_id in truck_2.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
-print("\nTruck 3 Loaded Packages:")
-for package_id in truck_3.packages:
-    package = package_table.lookup(package_id)
-    print(f"Package ID: {package_id}, Address: {package['address']}, Status: {package['status']}")
-
+# --- Phase 3:---
 # --- Deliver packages for Truck 3 ---
 truck_3.deliver_packages(package_table, location_indices, get_distance)
 print("--------------------------------------------------")
