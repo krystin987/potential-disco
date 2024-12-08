@@ -10,20 +10,35 @@ class Truck:
         self.start_time = datetime.strptime("08:00 AM", "%I:%M %p")
         self.current_time = self.start_time
 
-    def load_packages(self, package_ids):
+    def load_packages(self, package_ids, package_table, current_time):
         for package_id in package_ids:
             if len(self.packages) < 16:
                 self.packages.append(package_id)
+                package = package_table.lookup(package_id)
+                if package:
+                    package['start_time'] = current_time.strftime("%I:%M %p")
+                    package['status'] = "En route"
                 print(f"Truck {self.truck_id}: Loaded package {package_id}")
             else:
                 print(f"Truck {self.truck_id} is full. Cannot load package {package_id}.")
 
     def deliver_packages(self, package_table, location_indices, get_distance):
+        # Keep track of skipped packages to revisit them later
+        skipped_packages = []
+
         for package_id in self.packages:
             package = package_table.lookup(package_id)
             if not package:
                 print(f"Package {package_id} not found.")
                 continue
+
+            # Handle the special case for package #9
+            if package_id == 9:
+                update_time = datetime.strptime("10:20 AM", "%I:%M %p")
+                if self.current_time < update_time:
+                    print(f"Package {package_id} cannot be delivered before 10:20 AM. Skipping for now...")
+                    skipped_packages.append(package_id)
+                    continue
 
             package_address = package['address']
             if package_address in location_indices:
@@ -46,10 +61,27 @@ class Truck:
             else:
                 print(f"Address for package {package_id} not found in location index mapping.")
 
+        # Revisit skipped packages after the initial loop
+        for package_id in skipped_packages:
+            package = package_table.lookup(package_id)
+            package_address = package['address']
+            package_location_index = location_indices[package_address]
+            distance = get_distance(self.current_location_index, package_location_index)
+            travel_time = timedelta(hours=distance / self.speed)
+            self.current_time += travel_time
+            self.miles_driven += distance
+            self.current_location_index = package_location_index
+
+            delivery_time = self.current_time.strftime("%I:%M %p")
+            self.update_package_status(package_table, package_id, delivery_time)
+            print(
+                f"Truck {self.truck_id}: Delivered package {package_id} (revisited), total miles driven: {self.miles_driven:.2f}")
+
     def update_package_status(self, package_table, package_id, delivery_time):
         package = package_table.lookup(package_id)
         if package:
             package['status'] = f"Delivered at {delivery_time}"
+            package['delivery_time'] = delivery_time  # Adding the delivery time
             print(f"Package {package_id} delivered at {delivery_time}.")
         else:
             print(f"Package {package_id} not found.")

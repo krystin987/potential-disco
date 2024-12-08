@@ -1,16 +1,17 @@
 # Student ID: 010826054
 
+from datetime import datetime
+
+import utils
 from models.hash_table import HashTable
 from models.truck import Truck
 from user_interface.viewer import view_delivery_status
 import csv
 
-# Main program for delivering packages according to specified requirements
 # Create an instance of the HashTable to store package data
-package_table = HashTable(size=40)  # Assuming 40 packages as an average per day
+package_table = HashTable(size=40)
 
 # Load package data from WGUUPS Package File
-# Replace 'wguups_package_file.csv' with the actual path to the package data
 with open('./data/wguups_package_file.csv', mode='r') as file:
     reader = csv.DictReader(file)
     for row in reader:
@@ -22,18 +23,17 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
         weight = float(row['Weight KILO'])
         special_note = row['Special Notes']
         status = "At the hub"  # Initially all packages are at the hub
+        start_time = "At the hub"  # Initial start time
 
-        # Insert package data into the hash table
-        package_table.insert(package_id, address, deadline, city, zip_code, weight, status, special_note)
+        # Insert package data into the hash table, including the new start_time field
+        package_table.insert(package_id, address, deadline, city, zip_code, weight, status, special_note, start_time)
 
 # Load distance data from Distance Table
-# Replace with the actual path to the distance data
 distance_data = []
 with open('data/wguups_distance_table.csv', mode='r') as file:
     reader = csv.reader(file)
-    next(reader)  # Skip the header row
+    next(reader)
     for row in reader:
-        # Skip the first column in each row, which is the location name
         try:
             distance_row = [float(x) if x.strip() else 0.0 for x in row[1:]]
             distance_data.append(distance_row)
@@ -80,52 +80,38 @@ truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# --- Phase 1: ---
+# --- Phase 1: Loading Truck 1 and Truck 2 ---
+current_time = datetime.strptime("08:00 AM", "%I:%M %p")
+print(f"\nPhase 1: Loading Truck 1 and Truck 2 at {current_time.strftime('%I:%M %p')}")
+truck_1.load_packages([1, 2, 3, 4, 5, 6, 7, 8], package_table, current_time)
+truck_2.load_packages([9, 10, 11, 12, 13, 14, 15, 16], package_table, current_time)
 
-print("\nPhase 1: Loading Truck 1 and Truck 2")
-truck_1.load_packages([1, 2, 3, 4, 5, 6, 7, 8])
-truck_2.load_packages([9, 10, 11, 12, 13, 14, 15, 16])
-
-# --- Phase 2: ---
-
+# --- Phase 2: Loading Truck 3 ---
+current_time = datetime.strptime("09:35 AM", "%I:%M %p")
 print("\nPhase 2: Loading Truck 3 at 9:35 AM")
-truck_3.load_packages([17, 18, 19, 20, 21, 22, 23, 24])
+truck_3.load_packages([17, 18, 19, 20, 21, 22, 23, 24], package_table, current_time)
 
 # --- Deliver packages for Truck 1 and Truck 2 ---
 truck_1.deliver_packages(package_table, location_indices, get_distance)
 print("--------------------------------------------------")
 print(f"Final Truck 1 mileage: {truck_1.get_mileage():.2f} miles")
+
 truck_2.deliver_packages(package_table, location_indices, get_distance)
 print("--------------------------------------------------")
 print(f"Final Truck 2 mileage: {truck_2.get_mileage():.2f} miles")
 
-# Clear Truck 1 and Truck 2 for the next phase
-truck_1.clear_packages()
-truck_2.clear_packages()
-
-# define a function to update the package address at 10:20 AM
-def update_package_address(table, pkg_id, new_address):
-    update_package = table.lookup(pkg_id)
-    if update_package:
-        update_package['address'] = new_address['address']
-        update_package['city'] = new_address['city']
-        update_package['zip_code'] = new_address['zip_code']
-        print(f"Package {pkg_id} address updated to: {new_address['address']}, {new_address['city']}, {new_address['zip_code']}.")
-
-#  Update package #9 address at 10:20 AM
+# Update the address for package #9 at 10:20 AM
 corrected_address = {
     'address': '410 S State St',
     'city': 'Salt Lake City',
     'zip_code': '84111'
 }
+update_time = datetime.strptime("10:20 AM", "%I:%M %p")
+if current_time < update_time:
+    current_time = update_time
+    print("\n--- Address Correction at 10:20 AM ---")
+    utils.update_package_address(package_table, 9, corrected_address)
 
-print("\n--- Address Correction at 10:20 AM ---")
-update_package_address(package_table, 9, corrected_address)
-
-# Clear Truck 1 and Truck 2 for the next phase
-truck_1.clear_packages()
-truck_2.clear_packages()
-# --- Phase 3:---
 # --- Deliver packages for Truck 3 ---
 truck_3.deliver_packages(package_table, location_indices, get_distance)
 print("--------------------------------------------------")

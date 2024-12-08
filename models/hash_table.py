@@ -13,10 +13,9 @@ class HashTable:
         """
         return package_id % self.size
 
-    def insert(self, package_id, address, deadline, city, zip_code, weight, status, special_note):
+    def insert(self, package_id, address, deadline, city, zip_code, weight, status, special_note, start_time):
         """
         Inserts the package data into the hash table.
-        :param special_note:
         :param package_id: Unique identifier for the package.
         :param address: Delivery address.
         :param deadline: Delivery deadline.
@@ -24,6 +23,8 @@ class HashTable:
         :param zip_code: Delivery zip code.
         :param weight: Package weight.
         :param status: Delivery status.
+        :param special_note: Special note related to the package.
+        :param start_time: Start time for package delivery.
         """
         index = self._hash_function(package_id)
         bucket = self.table[index]
@@ -37,8 +38,9 @@ class HashTable:
                     "city": city,
                     "zip_code": zip_code,
                     "weight": weight,
-                    "status": status
-
+                    "status": status,
+                    "special_note": special_note,
+                    "start_time": start_time
                 })
                 return
 
@@ -51,7 +53,8 @@ class HashTable:
             "zip_code": zip_code,
             "weight": weight,
             "status": status,
-            'special_note': special_note
+            "special_note": special_note,
+            "start_time": start_time
         }
         bucket.append(package_data)
 
