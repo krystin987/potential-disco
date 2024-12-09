@@ -7,6 +7,8 @@ from models.hash_table import HashTable
 from models.truck import Truck
 from user_interface.viewer import view_delivery_status
 import csv
+from services.clustering import assign_packages_to_clusters, reassign_special_packages
+from routing import optimize_route
 
 # Create an instance of the HashTable to store package data
 package_table = HashTable(size=40)
@@ -84,57 +86,125 @@ truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# Split package IDs into groups for loading (maximum 16 packages per truck)
-package_groups = [
-    list(range(1, 17)),  # Truck 1
-    list(range(17, 33)), # Truck 2
-    list(range(33, 41))  # Truck 3
-]
+# Assign packages to clusters
+print("\nAssigning packages to clusters...")
+# Assign packages to clusters
+truck_1_packages, truck_2_packages, truck_3_packages, special_case_packages = assign_packages_to_clusters(package_table, location_indices)
 
-# Initialize current time
+# Reassign special-case packages
+print("\nReassigning special-case packages...")
+reassign_special_packages(
+    special_case_packages,
+    truck_1_packages,
+    truck_2_packages,
+    truck_3_packages,
+    package_table,
+    location_indices,
+    distance_data,
+    get_distance
+)
+print("Special-case package reassignment completed.")
+
+
+# Proceed with the rest of the workflow: loading and delivery
+print("\nCluster Assignments:")
+print(f"Truck 1 Packages: {truck_1_packages}")
+print(f"Truck 2 Packages: {truck_2_packages}")
+print(f"Truck 3 Packages: {truck_3_packages}")
+print(f"Special Case Packages: {special_case_packages}")
+
+# Exclude Package 9 from initial truck loading
+print("\nExcluding Package 9 from Truck 1 packages for initial loading...")
+truck_1_packages = [pkg for pkg in truck_1_packages if pkg != 9]
+print(f"Truck 1 packages after exclusion: {truck_1_packages}")
+
+# Initialize current time for simulation
 current_time = datetime.strptime("08:00 AM", "%I:%M %p")
 
 # Phase 1: Load and deliver Truck 1 and Truck 2
 print(f"\nPhase 1: Loading Truck 1 and Truck 2 at {current_time.strftime('%I:%M %p')}")
-truck_1.load_packages([pkg for pkg in package_groups[0] if pkg != 9], package_table, current_time)  # Exclude Package 9
-truck_2.load_packages(package_groups[1], package_table, current_time)
+truck_1.load_packages(truck_1_packages, package_table, current_time)
+truck_2.load_packages(truck_2_packages, package_table, current_time)
 
-# Deliver packages for Truck 1 and Truck 2
-# Phase 1: Deliver Truck 1 packages until 10:20 AM
+print("\nTruck 1 starting deliveries until 10:20 AM...")
 stop_time = datetime.strptime("10:20 AM", "%I:%M %p")
-print(f"Truck 1 delivering packages until {stop_time.strftime('%I:%M %p')}...")
 truck_1.deliver_packages(package_table, location_indices, get_distance, distance_data, stop_time)
 
-# --- Address correction for Package #9 at 10:20 AM ---
-corrected_address = {
-    'address': '410 S State St',
-    'city': 'Salt Lake City',
-    'zip_code': '84111'
-}
-# Return to hub, handle Package 9, and continue deliveries
-current_time = utils.handle_package_nine(package_table, corrected_address, truck_1, truck_1.current_time, location_indices, get_distance, distance_data)
+# Handle Package 9 centrally
+print("\nHandling Package 9...")
+corrected_address = {'address': '410 S State St', 'city': 'Salt Lake City', 'zip_code': '84111'}
+current_time = utils.handle_package_nine(
+    package_table=package_table,
+    truck=truck_1,
+    corrected_address=corrected_address,
+    current_time=current_time,
+    location_indices=location_indices,
+    get_distance=get_distance,
+    distance_data=distance_data
+)
 
-# Continue Truck 1 deliveries after handling Package 9
-print(f"Truck 1 resuming deliveries at {current_time.strftime('%I:%M %p')}...")
+# Reload Truck 1 with leftover packages when it returns for Package 9
+print("\nHandling leftover packages...")
+truck_1.reload_packages(package_table, location_indices, distance_data, get_distance)
+
+# Late Pickup Phase: Redistributing remaining packages
+print("\nLate Pickup Phase: Redistributing remaining packages...")
+if special_case_packages:
+    reassign_special_packages(
+        special_case_packages,
+        truck_1.packages,
+        truck_2.packages,
+        truck_3.packages,
+        package_table,
+        location_indices,
+        distance_data,
+        get_distance
+    )
+
+# Trucks return to hub to pick up any remaining packages
+if truck_1.unloaded_packages:
+    print("\nTruck 1 returning to hub for remaining packages...")
+    truck_1.reload_packages(package_table, location_indices, distance_data, get_distance)
+
+if truck_2.unloaded_packages:
+    print("\nTruck 2 returning to hub for remaining packages...")
+    truck_2.reload_packages(package_table, location_indices, distance_data, get_distance)
+
+if truck_3.unloaded_packages:
+    print("\nTruck 3 returning to hub for remaining packages...")
+    truck_3.reload_packages(package_table, location_indices, distance_data, get_distance)
+
+# Continue Truck 1 deliveries
+print("\nTruck 1 resuming deliveries...")
 truck_1.deliver_packages(package_table, location_indices, get_distance, distance_data)
 
+# Truck 2 deliveries
+print("\nTruck 2 starting deliveries...")
 truck_2.deliver_packages(package_table, location_indices, get_distance, distance_data)
-print(f"\nTruck 2 Mileage: {truck_2.get_mileage():.2f} miles")
 
-update_time = datetime.strptime("10:20 AM", "%I:%M %p")
+# Ensure compliance with two-driver rule
+print("\nEnsuring compliance with two-driver rule...")
 
-# # Use utils function to handle package 9 loading and delivery
-# current_time = utils.handle_package_nine(package_table, corrected_address, truck_1, current_time, location_indices, get_distance, distance_data)
+# Determine which truck finishes first and ensure the driver returns to the hub
+if truck_1.current_time > truck_2.current_time:
+    print("Truck 2 has completed deliveries. Driver assigned to Truck 3.")
+    # Truck 2 returns to the hub
+    truck_2.return_to_hub(get_distance, truck_2.current_time)
+    current_time = truck_2.current_time
+else:
+    print("Truck 1 has completed deliveries. Driver assigned to Truck 3.")
+    # Truck 1 returns to the hub
+    truck_1.return_to_hub(get_distance, truck_1.current_time)
+    current_time = truck_1.current_time
 
-# Phase 2: Load and deliver Truck 3
+# Phase 2: Load and Deliver Truck 3
 print(f"\nPhase 2: Loading Truck 3 at {current_time.strftime('%I:%M %p')}")
-truck_3.current_time = current_time  # Explicitly set Truck 3's current time
-truck_3.load_packages(package_groups[2], package_table, truck_3.current_time)
+truck_3.current_time = current_time  # Explicitly set Truck 3's start time
+truck_3.load_packages(truck_3_packages, package_table, truck_3.current_time)
 
-# Deliver packages for Truck 3 using its updated current time
-truck_3.deliver_packages(package_table, location_indices, get_distance, distance_data)
-print(f"\nTruck 3 Mileage: {truck_3.get_mileage():.2f} miles")
-
+# Check and start Truck 3's deliveries
+print("\nTruck 3 starting deliveries...")
+truck_3.deliver_packages(package_table, location_indices, get_distance, distance_data, stop_time=None)
 
 # Print the total mileage for all trucks
 total_mileage = truck_1.get_mileage() + truck_2.get_mileage() + truck_3.get_mileage()
@@ -143,6 +213,14 @@ print(f"\nTotal Mileage for All Trucks: {total_mileage:.2f} miles")
 # Display the hash table to check updates
 print("\nFinal Package Status:")
 print(package_table)
+
+# Validate mileage constraints
+print(f"\nValidating mileage constraints...")
+for truck in [truck_1, truck_2, truck_3]:
+    if truck.get_mileage() > 140:
+        print(f"WARNING: Truck {truck.truck_id} exceeded mileage limit: {truck.get_mileage():.2f} miles.")
+    else:
+        print(f"Truck {truck.truck_id} mileage is within limits: {truck.get_mileage():.2f} miles.")
 
 # Call the view_delivery_status function to allow the user to interact with the system
 view_delivery_status(package_table=package_table, truck_1=truck_1, truck_2=truck_2, truck_3=truck_3)
