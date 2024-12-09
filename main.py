@@ -42,7 +42,11 @@ with open('data/wguups_distance_table.csv', mode='r') as file:
 
 # Function to get distance between two locations based on their indices in the distance data
 def get_distance(location_1_index, location_2_index):
-    return distance_data[location_1_index][location_2_index]
+    try:
+        return distance_data[location_1_index][location_2_index]
+    except IndexError:
+        print(f"Invalid indices: {location_1_index}, {location_2_index}")
+        return float('inf')  # Use infinity to indicate an invalid distance
 
 # Location indices mapping for accurate distance calculation
 location_indices = {
@@ -80,51 +84,64 @@ truck_1 = Truck(truck_id=1)
 truck_2 = Truck(truck_id=2)
 truck_3 = Truck(truck_id=3)
 
-# --- Phase 1: Loading Truck 1 and Truck 2 ---
+# Split package IDs into groups for loading (maximum 16 packages per truck)
+package_groups = [
+    list(range(1, 17)),  # Truck 1
+    list(range(17, 33)), # Truck 2
+    list(range(33, 41))  # Truck 3
+]
+
+# Initialize current time
 current_time = datetime.strptime("08:00 AM", "%I:%M %p")
+
+# Phase 1: Load and deliver Truck 1 and Truck 2
 print(f"\nPhase 1: Loading Truck 1 and Truck 2 at {current_time.strftime('%I:%M %p')}")
-truck_1.load_packages([1, 2, 3, 4, 5, 6, 7, 8], package_table, current_time)
-truck_2.load_packages([9, 10, 11, 12, 13, 14, 15, 16], package_table, current_time)
+truck_1.load_packages([pkg for pkg in package_groups[0] if pkg != 9], package_table, current_time)  # Exclude Package 9
+truck_2.load_packages(package_groups[1], package_table, current_time)
 
-# --- Phase 2: Loading Truck 3 ---
-current_time = datetime.strptime("09:35 AM", "%I:%M %p")
-print("\nPhase 2: Loading Truck 3 at 9:35 AM")
-truck_3.load_packages([17, 18, 19, 20, 21, 22, 23, 24], package_table, current_time)
+# Deliver packages for Truck 1 and Truck 2
+# Phase 1: Deliver Truck 1 packages until 10:20 AM
+stop_time = datetime.strptime("10:20 AM", "%I:%M %p")
+print(f"Truck 1 delivering packages until {stop_time.strftime('%I:%M %p')}...")
+truck_1.deliver_packages(package_table, location_indices, get_distance, distance_data, stop_time)
 
-# --- Deliver packages for Truck 1 and Truck 2 ---
-truck_1.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Final Truck 1 mileage: {truck_1.get_mileage():.2f} miles")
-
-truck_2.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Final Truck 2 mileage: {truck_2.get_mileage():.2f} miles")
-
-# Update the address for package #9 at 10:20 AM
+# --- Address correction for Package #9 at 10:20 AM ---
 corrected_address = {
     'address': '410 S State St',
     'city': 'Salt Lake City',
     'zip_code': '84111'
 }
-update_time = datetime.strptime("10:20 AM", "%I:%M %p")
-if current_time < update_time:
-    current_time = update_time
-    print("\n--- Address Correction at 10:20 AM ---")
-    utils.update_package_address(package_table, 9, corrected_address)
+# Return to hub, handle Package 9, and continue deliveries
+current_time = utils.handle_package_nine(package_table, corrected_address, truck_1, truck_1.current_time, location_indices, get_distance, distance_data)
 
-# --- Deliver packages for Truck 3 ---
-truck_3.deliver_packages(package_table, location_indices, get_distance)
-print("--------------------------------------------------")
-print(f"Final Truck 3 mileage: {truck_3.get_mileage():.2f} miles")
+# Continue Truck 1 deliveries after handling Package 9
+print(f"Truck 1 resuming deliveries at {current_time.strftime('%I:%M %p')}...")
+truck_1.deliver_packages(package_table, location_indices, get_distance, distance_data)
+
+truck_2.deliver_packages(package_table, location_indices, get_distance, distance_data)
+print(f"\nTruck 2 Mileage: {truck_2.get_mileage():.2f} miles")
+
+update_time = datetime.strptime("10:20 AM", "%I:%M %p")
+
+# # Use utils function to handle package 9 loading and delivery
+# current_time = utils.handle_package_nine(package_table, corrected_address, truck_1, current_time, location_indices, get_distance, distance_data)
+
+# Phase 2: Load and deliver Truck 3
+print(f"\nPhase 2: Loading Truck 3 at {current_time.strftime('%I:%M %p')}")
+truck_3.current_time = current_time  # Explicitly set Truck 3's current time
+truck_3.load_packages(package_groups[2], package_table, truck_3.current_time)
+
+# Deliver packages for Truck 3 using its updated current time
+truck_3.deliver_packages(package_table, location_indices, get_distance, distance_data)
+print(f"\nTruck 3 Mileage: {truck_3.get_mileage():.2f} miles")
+
 
 # Print the total mileage for all trucks
 total_mileage = truck_1.get_mileage() + truck_2.get_mileage() + truck_3.get_mileage()
-print("\n--------------------------------------------------")
-print(f"End of Day Total Mileage for All Trucks: {total_mileage:.2f} miles")
+print(f"\nTotal Mileage for All Trucks: {total_mileage:.2f} miles")
 
 # Display the hash table to check updates
-print("\n--------------------------------------------------")
-print("Final Package Status:")
+print("\nFinal Package Status:")
 print(package_table)
 
 # Call the view_delivery_status function to allow the user to interact with the system
