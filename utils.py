@@ -36,7 +36,7 @@ def handle_package_nine(package_table, truck, corrected_address, current_time, l
     truck.return_to_hub(get_distance, current_time)
 
     # Load Package 9 and deliver it
-    print(f"Truck {truck.truck_id}: Loading Package 9 at {truck.current_time.strftime('%I:%M %p')}.")
+    # print(f"Truck {truck.truck_id}: Loading Package 9 at {truck.current_time.strftime('%I:%M %p')}.")
     truck.load_packages([9], package_table, truck.current_time)
     truck.deliver_single_package(9, package_table, location_indices, get_distance, distance_data, truck.current_time)
 
