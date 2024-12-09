@@ -1,97 +1,101 @@
 from datetime import datetime
+import re
 
 
-def normalize_time_input(user_time_str):
-    """
-    Normalizes the user's time input to handle various formats.
-    Examples:
-    - "10am" -> "10:00 AM"
-    - "1030 pm" -> "10:30 PM"
-    - "10.30am" -> "10:30 AM"
-    - "9:00 am" -> "09:00 AM"
-    """
-    # Remove any spaces, colons, or periods
-    user_time_str = user_time_str.replace(" ", "").replace(".", "").replace(":", "")
+# Helper function to normalize user time input (e.g., accepting lower case or input without periods)
+def normalize_time_input(input_time):
+    # Remove unnecessary characters (spaces, dots, colons) and make lowercase
+    input_time = re.sub(r"[ .:]", "", input_time).lower()
 
-    # Extract time and am/pm
-    if "am" in user_time_str.lower():
-        suffix = "AM"
-        time_str = user_time_str.lower().replace("am", "")
-    elif "pm" in user_time_str.lower():
-        suffix = "PM"
-        time_str = user_time_str.lower().replace("pm", "")
+    # Match against common time formats (e.g., 10am, 1000am, 10:00am)
+    if "am" in input_time or "pm" in input_time:
+        # Extract the numerical part and am/pm suffix
+        time_part = re.sub(r"\D", "", input_time)
+        period = "am" if "am" in input_time else "pm"
+
+        # Handle different lengths of time_part (e.g., 10 vs 1000)
+        if len(time_part) == 1 or len(time_part) == 2:
+            # Assume it's an hour only (e.g., 10am, 3pm)
+            formatted_time = f"{time_part}:00 {period.upper()}"
+        elif len(time_part) == 3 or len(time_part) == 4:
+            # Handle hour and minute (e.g., 930am, 0945pm)
+            hour = time_part[:-2]
+            minute = time_part[-2:]
+            formatted_time = f"{hour}:{minute} {period.upper()}"
+        else:
+            raise ValueError("Invalid time format")
     else:
-        raise ValueError("Invalid time format. Please include AM or PM.")
+        raise ValueError("Invalid time format")
 
-    # Pad with leading zero if necessary and add ":00" for whole hours
-    if len(time_str) <= 2:
-        time_str = f"{int(time_str):02d}:00"
-    elif len(time_str) == 3:
-        time_str = f"{time_str[0]}:{time_str[1:]}"
-    elif len(time_str) == 4:
-        time_str = f"{time_str[:2]}:{time_str[2:]}"
-    else:
-        raise ValueError("Invalid time format. Please enter a valid time.")
+    return formatted_time
 
-    # Return the formatted time with the appropriate suffix
-    return f"{time_str} {suffix}"
+
+# Helper function to determine package status at a given time
+def get_package_status_at_time(package, user_time):
+    if 'delivery_time' in package and package['delivery_time']:
+        delivery_time = datetime.strptime(package['delivery_time'], "%I:%M %p")
+        if user_time >= delivery_time:
+            return f"Delivered at {package['delivery_time']}"
+    if 'start_time' in package and package['start_time'] != "At the hub":
+        start_time = datetime.strptime(package['start_time'], "%I:%M %p")
+        if user_time >= start_time:
+            return "En route"
+    return "At the hub"
 
 
 def view_delivery_status(package_table, truck_1, truck_2, truck_3):
     while True:
-        try:
-            # Prompt user for a specific time to view the package statuses
-            user_time_str = input("\nEnter the time to view package status (e.g., 10am, 1030pm, or 'exit' to quit): ")
-            if user_time_str.lower() == 'exit':
-                print("Exiting viewer.")
-                break
+        print("\n--- Package Delivery Status Viewer ---")
+        print("1. View package status at a specific time")
+        print("2. View package status by ID")
+        print("3. View total mileage of all trucks")
+        print("4. Exit")
+        choice = input("Enter your choice (1-4): ")
 
-            # Normalize the input time
-            normalized_time_str = normalize_time_input(user_time_str)
+        if choice == '1':
+            # User inputs time to check the status of all packages
+            input_time = input("Enter the time (e.g., 10:20am or 3:45pm): ").strip().lower()
+            try:
+                # Normalize time input to match our data format (e.g., 08:00 AM)
+                normalized_time = normalize_time_input(input_time)
+                user_time = datetime.strptime(normalized_time, "%I:%M %p")
 
-            # Parse the normalized input time
-            user_time = datetime.strptime(normalized_time_str, "%I:%M %p")
+                print(f"\n--- Package Status at {normalized_time} ---")
+                for package_id in range(1, package_table.size + 1):
+                    package = package_table.lookup(package_id)
+                    if package:
+                        delivery_status = get_package_status_at_time(package, user_time)
+                        print(f"Package ID: {package['package_id']}, Address: {package['address']}, "
+                              f"Deadline: {package['deadline']}, Status: {delivery_status}")
 
-            print("\n--- Package Status at", normalized_time_str, "---")
+            except ValueError:
+                print("Invalid time format. Please enter the time in a valid format (e.g., 10:20am or 3:45pm).")
 
-            # Check the status of each package in the hash table
-            for package_id in range(1, 41):  # Assuming 40 packages, with IDs from 1 to 40
+        elif choice == '2':
+            # User inputs package ID to view its current status
+            try:
+                package_id = int(input("Enter the package ID: "))
                 package = package_table.lookup(package_id)
-                if not package:
-                    continue
+                if package:
+                    print(f"Package ID: {package['package_id']}")
+                    print(f"Address: {package['address']}, {package['city']}, {package['zip_code']}")
+                    print(f"Deadline: {package['deadline']}")
+                    print(f"Weight: {package['weight']} kg")
+                    print(f"Status: {package['status']}")
+                else:
+                    print("Package not found.")
+            except ValueError:
+                print("Invalid package ID. Please enter a numeric value.")
 
-                # Determine the status of the package
-                status = "At the hub"
-                if package['status'].startswith("Delivered"):
-                    delivery_time = datetime.strptime(package['status'].split(" at ")[1], "%I:%M %p")
-                    if user_time >= delivery_time:
-                        status = f"Delivered at {delivery_time.strftime('%I:%M %p')}"
-                elif package['status'] == "En route":
-                    status = "En route"
+        elif choice == '3':
+            # View the total mileage of all trucks
+            total_mileage = truck_1.get_mileage() + truck_2.get_mileage() + truck_3.get_mileage()
+            print(f"\nTotal mileage of all trucks: {total_mileage:.2f} miles")
 
-                # Display package information
-                print(f"Package ID: {package_id}")
-                print(f"Address: {package['address']}, {package['city']}, {package['zip_code']}")
-                print(f"Deadline: {package['deadline']}")
-                print(f"Weight: {package['weight']} kg")
-                print(f"Status: {status}\n")
+        elif choice == '4':
+            # Exit the viewer
+            print("Exiting viewer.")
+            break
 
-            # Calculate and display total mileage at the given time
-            total_mileage = 0.0
-
-            # Truck 1 mileage
-            if truck_1.current_time <= user_time:
-                total_mileage += truck_1.get_mileage()
-
-            # Truck 2 mileage
-            if truck_2.current_time <= user_time:
-                total_mileage += truck_2.get_mileage()
-
-            # Truck 3 mileage
-            if truck_3.current_time <= user_time:
-                total_mileage += truck_3.get_mileage()
-
-            print(f"Total mileage of all trucks at {normalized_time_str}: {total_mileage:.2f} miles\n")
-
-        except ValueError:
-            print("Invalid time format. Please enter a valid time in the format 'hh:mm AM/PM' or similar.")
+        else:
+            print("Invalid choice. Please enter a number between 1 and 4.")
