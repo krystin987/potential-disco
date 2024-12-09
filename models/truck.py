@@ -80,12 +80,13 @@ class Truck:
             print(
                 f"Truck {self.truck_id}: Delivered package {package_id} at {delivery_time}, total miles driven: {self.miles_driven:.2f}")
 
-    def update_package_status(self, package_table, package_id, delivery_time):
+    @staticmethod
+    def update_package_status(package_table, package_id, delivery_time):
+        """Update the status of a delivered package in the package table."""
         package = package_table.lookup(package_id)
         if package:
             package['status'] = f"Delivered at {delivery_time}"
             package['delivery_time'] = delivery_time
-            # print(f"Package {package_id} delivered at {delivery_time}.")
         else:
             print(f"Package {package_id} not found.")
 

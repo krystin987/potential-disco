@@ -91,7 +91,6 @@ def reassign_special_packages(
         if package:
             address = package['address']
             address_index = location_indices.get(address)
-            deadline = package['deadline']
 
             if address_index is not None:
                 # Prioritize trucks dynamically based on capacity and deadline proximity

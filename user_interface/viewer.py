@@ -10,7 +10,7 @@ def normalize_time_input(input_time):
     # Match against common time formats (e.g., 10am, 1000am, 10:00am)
     if "am" in input_time or "pm" in input_time:
         # Extract the numerical part and am/pm suffix
-        time_part = re.sub(r"[^\d]", "", input_time)
+        time_part = re.sub(r"\D", "", input_time)
         period = "am" if "am" in input_time else "pm"
 
         # Handle different lengths of time_part (e.g., 10 vs 1000)
