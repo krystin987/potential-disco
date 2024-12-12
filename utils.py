@@ -24,13 +24,14 @@ def handle_package_nine(package_table, truck, corrected_address, current_time, l
     update_time = datetime.strptime("10:20 AM", "%I:%M %p")
     if current_time < update_time:
         print(f"Waiting for address correction at {update_time.strftime('%I:%M %p')}. Current time is {current_time.strftime('%I:%M %p')}.")
-        current_time = update_time
+        return update_time  # Return the time of correction without applying the update yet
 
-    # Update Package 9's address
+    # Update Package 9's address at 10:20 AM
     package = package_table.lookup(9)
-    if package:
+    if package and package.get("awaiting_address_correction"):
         package.update(corrected_address)
-        print(f"Package 9 address updated to: {corrected_address['address']}.")
+        package["awaiting_address_correction"] = False  # Clear the flag
+        print(f"Package 9 address updated to: {corrected_address['address']}, {corrected_address['city']}, {corrected_address['zip_code']}.")
 
     # Ensure Truck 1 is at the hub
     truck.return_to_hub(get_distance, current_time)
