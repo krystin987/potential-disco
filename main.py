@@ -26,9 +26,22 @@ with open('./data/wguups_package_file.csv', mode='r') as file:
         special_note = row['Special Notes']
         status = "At the hub"  # Initially all packages are at the hub
         start_time = "At the hub"  # Initial start time
+        # Determine if package is awaiting address correction (specific to Package 9)
+        awaiting_address_correction = (package_id == 9)
 
-        # Insert package data into the hash table, including the new start_time field
-        package_table.insert(package_id, address, deadline, city, zip_code, weight, status, special_note, start_time)
+        # Insert package data into the hash table, including the awaiting_address_correction field
+        package_table.insert(
+            package_id,
+            address,
+            deadline,
+            city,
+            zip_code,
+            weight,
+            status,
+            special_note,
+            start_time,
+            awaiting_address_correction
+        )
 
 # Load distance data from Distance Table
 distance_data = []

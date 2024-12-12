@@ -13,7 +13,8 @@ class HashTable:
         """
         return package_id % self.size
 
-    def insert(self, package_id, address, deadline, city, zip_code, weight, status, special_note, start_time):
+    def insert(self, package_id, address, deadline, city, zip_code, weight, status, special_note, start_time,
+               awaiting_address_correction=False):
         """
         Inserts the package data into the hash table.
         :param package_id: Unique identifier for the package.
@@ -25,6 +26,7 @@ class HashTable:
         :param status: Delivery status.
         :param special_note: Special note related to the package.
         :param start_time: Start time for package delivery.
+        :param awaiting_address_correction: Boolean indicating if the package is awaiting an address correction.
         """
         index = self._hash_function(package_id)
         bucket = self.table[index]
@@ -40,7 +42,8 @@ class HashTable:
                     "weight": weight,
                     "status": status,
                     "special_note": special_note,
-                    "start_time": start_time
+                    "start_time": start_time,
+                    "awaiting_address_correction": awaiting_address_correction
                 })
                 return
 
@@ -54,7 +57,8 @@ class HashTable:
             "weight": weight,
             "status": status,
             "special_note": special_note,
-            "start_time": start_time
+            "start_time": start_time,
+            "awaiting_address_correction": awaiting_address_correction
         }
         bucket.append(package_data)
 

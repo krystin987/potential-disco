@@ -29,9 +29,24 @@ def normalize_time_input(input_time):
 
     return formatted_time
 
-
 # Helper function to determine package status at a given time
 def get_package_status_at_time(package, user_time):
+    # Special handling for awaiting address correction
+    if package.get('awaiting_address_correction', False):
+        correction_time = datetime.strptime("10:20 AM", "%I:%M %p")
+        if user_time < correction_time:
+            # Retain the original address before the correction
+            package['address'] = "300 State St"  # Explicitly reset to the original address
+            package['city'] = "Salt Lake City"
+            package['zip_code'] = "84103"
+            return "At the hub (Awaiting address correction)"
+        elif user_time >= correction_time:
+            # Address correction has occurred, now check for delivery status
+            package['address'] = "410 S State St"  # Updated address after correction
+            package['city'] = "Salt Lake City"
+            package['zip_code'] = "84111"
+
+    # Standard handling for all packages
     if 'delivery_time' in package and package['delivery_time']:
         delivery_time = datetime.strptime(package['delivery_time'], "%I:%M %p")
         if user_time >= delivery_time:
@@ -41,7 +56,6 @@ def get_package_status_at_time(package, user_time):
         if user_time >= start_time:
             return "En route"
     return "At the hub"
-
 
 def view_delivery_status(package_table, truck_1, truck_2, truck_3):
     while True:
